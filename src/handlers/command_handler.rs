@@ -2,6 +2,23 @@ use super::*;
 use crate::display_action::DisplayAction;
 use crate::utils::helpers;
 
+#[test]
+fn basic_move_to_tag_test() {
+    let mut manager = Manager::default();
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+    }
+    let res = process(
+        &mut manager,
+        Command::MoveToTag,
+        Some("2".to_string()),
+    );
+    assert!(res);
+    assert!(manager.windows[2].tags.contains(&"B".to_string()));
+}
+
 pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> bool {
     match command {
         Command::MoveToTag if val.is_none() => false,
