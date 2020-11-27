@@ -19,6 +19,76 @@ fn basic_move_to_tag_test() {
     assert!(manager.windows[2].tags.contains(&"B".to_string()));
 }
 
+#[test]
+fn basic_go_to_tag_test() {
+    let mut manager = Manager::default();
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    crate::handlers::screen_create_handler::process(&mut manager, Screen::default());
+
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+        let workspace = Workspace::new(BBox {
+            width: 600,
+            height: 800,
+            x: 0,
+            y: 0,
+        });
+        manager.workspaces.push(workspace.clone());
+    }
+
+    let valid_input = vec!["1","2"];
+
+    for input in valid_input.iter() {
+        let res = process(
+            &mut manager,
+            Command::GotoTag,
+            Some(input.to_string()),
+        );
+        assert!(res);
+    }
+
+    let invalid_input = vec!["A","B","C","0","1000",""];
+
+    for input in invalid_input.iter() {
+        let res = process(
+            &mut manager,
+            Command::GotoTag,
+            Some(input.to_string()),
+        );
+        assert!(!res);
+    }
+}
+
+
+
+#[test]
+// Need to verify behavior when there is no tag history. Currently returns Some(1). Potential undefined behaviour.
+fn basic_focus_next_tag_test() {
+    let mut manager = Manager::default();
+    crate::handlers::screen_create_handler::process(&mut manager, Screen::default());
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+    }
+    crate::handlers::focus_handler::focus_tag(&mut manager, "A");
+
+    let tag_count = manager.tags.len();
+
+    // validate we can do full wrap around of tags
+    for n in 1..=tag_count {
+        let res = process(
+            &mut manager,
+            Command::FocusNextTag,
+            None
+        );
+        assert_eq!(manager.focused_tag(), Some(manager.tags[n%tag_count].to_string()));
+        assert!(res);
+    }
+}
+
+// returns true if we need to redraw the screen, false if no change of state happened.
 pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> bool {
     match command {
         Command::MoveToTag if val.is_none() => false,
