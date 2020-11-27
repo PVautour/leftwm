@@ -88,6 +88,31 @@ fn basic_focus_next_tag_test() {
     }
 }
 
+#[test]
+fn basic_focus_previous_tag_test() {
+    let mut manager = Manager::default();
+    crate::handlers::screen_create_handler::process(&mut manager, Screen::default());
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+    }
+    crate::handlers::focus_handler::focus_tag(&mut manager, "A");
+
+    let tag_count = manager.tags.len();
+
+    // validate we can do full wrap around of tags
+    for n in 1..=tag_count {
+        let res = process(
+            &mut manager,
+            Command::FocusPreviousTag,
+            None
+        );
+        assert_eq!(manager.focused_tag(), Some(manager.tags[tag_count-n].to_string()));
+        assert!(res);
+    }
+}
+
 // returns true if we need to redraw the screen, false if no change of state happened.
 pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> bool {
     match command {
