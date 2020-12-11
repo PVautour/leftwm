@@ -10,11 +10,7 @@ fn basic_move_to_tag_test() {
         let window = Window::new(WindowHandle::MockHandle(n), None);
         window_handler::created(&mut manager, window);
     }
-    let res = process(
-        &mut manager,
-        Command::MoveToTag,
-        Some("2".to_string()),
-    );
+    let res = process(&mut manager, Command::MoveToTag, Some("2".to_string()));
     assert!(res);
     assert!(manager.windows[2].tags.contains(&"B".to_string()));
 }
@@ -37,30 +33,20 @@ fn basic_go_to_tag_test() {
         manager.workspaces.push(workspace.clone());
     }
 
-    let valid_input = vec!["1","2"];
+    let valid_input = vec!["1", "2"];
 
     for input in valid_input.iter() {
-        let res = process(
-            &mut manager,
-            Command::GotoTag,
-            Some(input.to_string()),
-        );
+        let res = process(&mut manager, Command::GotoTag, Some(input.to_string()));
         assert!(res);
     }
 
-    let invalid_input = vec!["A","B","C","0","1000",""];
+    let invalid_input = vec!["A", "B", "C", "0", "1000", ""];
 
     for input in invalid_input.iter() {
-        let res = process(
-            &mut manager,
-            Command::GotoTag,
-            Some(input.to_string()),
-        );
+        let res = process(&mut manager, Command::GotoTag, Some(input.to_string()));
         assert!(!res);
     }
 }
-
-
 
 #[test]
 // Need to verify behavior when there is no tag history. Currently returns Some(1). Potential undefined behaviour.
@@ -78,12 +64,11 @@ fn basic_focus_next_tag_test() {
 
     // validate we can do full wrap around of tags
     for n in 1..=tag_count {
-        let res = process(
-            &mut manager,
-            Command::FocusNextTag,
-            None
+        let res = process(&mut manager, Command::FocusNextTag, None);
+        assert_eq!(
+            manager.focused_tag(),
+            Some(manager.tags[n % tag_count].to_string())
         );
-        assert_eq!(manager.focused_tag(), Some(manager.tags[n%tag_count].to_string()));
         assert!(res);
     }
 }
@@ -103,14 +88,41 @@ fn basic_focus_previous_tag_test() {
 
     // validate we can do full wrap around of tags
     for n in 1..=tag_count {
-        let res = process(
-            &mut manager,
-            Command::FocusPreviousTag,
-            None
+        let res = process(&mut manager, Command::FocusPreviousTag, None);
+        assert_eq!(
+            manager.focused_tag(),
+            Some(manager.tags[tag_count - n].to_string())
         );
-        assert_eq!(manager.focused_tag(), Some(manager.tags[tag_count-n].to_string()));
         assert!(res);
     }
+}
+
+#[test]
+fn execute_basic_execute_test() {
+    let mut manager = Manager::default();
+    crate::handlers::screen_create_handler::process(&mut manager, Screen::default());
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+    }
+
+    let res = process(&mut manager, Command::Execute, Some("ls".to_string()));
+    assert!(!res);
+}
+
+#[test]
+fn execute_basic_close_window_test() {
+    let mut manager = Manager::default();
+    crate::handlers::screen_create_handler::process(&mut manager, Screen::default());
+    manager.tags = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+    for n in 1..=3 {
+        let window = Window::new(WindowHandle::MockHandle(n), None);
+        window_handler::created(&mut manager, window);
+    }
+    assert_eq!(manager.windows.len(), 3);
+    let res = process(&mut manager, Command::CloseWindow, Some("1".to_string()));
+    assert_eq!(manager.windows.len(), 2);
 }
 
 // returns true if we need to redraw the screen, false if no change of state happened.
