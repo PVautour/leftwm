@@ -129,14 +129,35 @@ pub fn focus_last_window_that_exists(manager: &mut Manager) -> bool {
     false
 }
 
+#[test]
+fn test_focus_tag_5() {
+    let mut manager = Manager::default();
+    screen_create_handler::process(&mut manager, Screen::default());
+    focus_tag(&mut manager, "1");
+    focus_tag(&mut manager, "3");
+    focus_tag(&mut manager, "4");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+    focus_tag(&mut manager, "2");
+}
 /*
  * marks a tag as the focused tag
  */
 pub fn focus_tag(manager: &mut Manager, tag: &str) -> bool {
+    let mut dest_tag = tag;
+    let prev_tag = match manager.focused_tag_history.get(1).cloned() {
+        Some(x) => x,
+        _ => tag.to_string(),
+    };
+
     //no new history for if no change
     if let Some(t) = manager.focused_tag() {
         if t == tag {
-            return false;
+            dest_tag = &prev_tag;
         }
     }
     //clean old ones
@@ -144,12 +165,13 @@ pub fn focus_tag(manager: &mut Manager, tag: &str) -> bool {
         manager.focused_tag_history.pop_back();
     }
     //add this focus to the history
-    manager.focused_tag_history.push_front(tag.to_string());
+    manager.focused_tag_history.push_front(dest_tag.to_string());
+
     // check each workspace, if its displaying this tag it should be focused too
     let to_focus: Vec<Workspace> = manager
         .workspaces
         .iter()
-        .filter(|w| w.has_tag(tag))
+        .filter(|w| w.has_tag(dest_tag))
         .cloned()
         .collect();
     to_focus.iter().for_each(|w| {
