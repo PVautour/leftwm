@@ -2,6 +2,37 @@ use super::*;
 use crate::display_action::DisplayAction;
 use crate::utils::helpers;
 
+#[test]
+fn pascal_test() {
+    let mut manager = Manager::default();
+    manager.tags = vec![
+        TagModel::new("A1"),
+        TagModel::new("B2"),
+        TagModel::new("C3"),
+        TagModel::new("D4"),
+        TagModel::new("E3"),
+        TagModel::new("F6"),
+    ];
+    screen_create_handler::process(&mut manager, Screen::default());
+    // screen_create_handler::process(&mut manager, Screen::default());
+    process(&mut manager, Command::GotoTag, Some("6".to_string()));
+    process(&mut manager, Command::GotoTag, Some("2".to_string()));
+    process(&mut manager, Command::GotoTag, Some("6".to_string()));
+    process(&mut manager, Command::GotoTag, Some("6".to_string()));
+    process(&mut manager, Command::GotoTag, Some("6".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    process(&mut manager, Command::GotoTag, Some("5".to_string()));
+    println!("{:?}", manager.focused_tag_history)
+}
+
 pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> bool {
     match command {
         Command::MoveToTag if val.is_none() => false,
@@ -24,10 +55,21 @@ pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> 
 
         Command::GotoTag if val.is_none() => false,
         Command::GotoTag if !is_num(&val) => false,
-        Command::GotoTag => goto_tag_handler::process(manager, to_num(&val)),
+        Command::GotoTag => {
+            let zero = manager.tag_index(manager.focused_tag(0).unwrap_or_default());
+            let one = manager
+                .tag_index(manager.focused_tag(1).unwrap_or_default())
+                .unwrap_or_default();
+            let tag_value = to_num(&val);
+            let tag = match (zero, tag_value) {
+                (Some(x), y) if x + 1 == y => one + 1,
+                (_, _) => tag_value,
+            };
+            goto_tag_handler::process(manager, tag)
+        }
 
         Command::FocusNextTag => {
-            let current = manager.focused_tag();
+            let current = manager.focused_tag(0);
             let current = current.unwrap();
             let mut index = match manager.tags.iter().position(|x| x.id == current) {
                 Some(x) => x + 1,
@@ -46,7 +88,7 @@ pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> 
         }
 
         Command::FocusPreviousTag => {
-            let current = manager.focused_tag();
+            let current = manager.focused_tag(0);
             let current = current.unwrap();
             let mut index = match manager.tags.iter().position(|x| x.id == current) {
                 Some(x) => x + 1,

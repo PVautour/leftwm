@@ -56,8 +56,14 @@ impl Manager {
     }
 
     /// Return the currently focused tag.
-    pub fn focused_tag(&self) -> Option<String> {
-        self.focused_tag_history.get(0).map(|t| t.to_string())
+    /// Offset is used to reach farther down the history.
+    pub fn focused_tag(&self, offset: usize) -> Option<String> {
+        self.focused_tag_history.get(offset).map(|t| t.to_string())
+    }
+
+    /// Return the index of a given tag.
+    pub fn tag_index(&self, tag: String) -> Option<usize> {
+        Some(self.tags.iter().position(|t| t.id == tag)).unwrap_or(None)
     }
 
     /// Return the currently focused window.
