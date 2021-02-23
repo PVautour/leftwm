@@ -2,37 +2,6 @@ use super::*;
 use crate::display_action::DisplayAction;
 use crate::utils::helpers;
 
-#[test]
-fn pascal_test() {
-    let mut manager = Manager::default();
-    manager.tags = vec![
-        TagModel::new("A1"),
-        TagModel::new("B2"),
-        TagModel::new("C3"),
-        TagModel::new("D4"),
-        TagModel::new("E3"),
-        TagModel::new("F6"),
-    ];
-    screen_create_handler::process(&mut manager, Screen::default());
-    // screen_create_handler::process(&mut manager, Screen::default());
-    process(&mut manager, Command::GotoTag, Some("6".to_string()));
-    process(&mut manager, Command::GotoTag, Some("2".to_string()));
-    process(&mut manager, Command::GotoTag, Some("6".to_string()));
-    process(&mut manager, Command::GotoTag, Some("6".to_string()));
-    process(&mut manager, Command::GotoTag, Some("6".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    process(&mut manager, Command::GotoTag, Some("5".to_string()));
-    println!("{:?}", manager.focused_tag_history)
-}
-
 pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> bool {
     match command {
         Command::MoveToTag if val.is_none() => false,
@@ -56,16 +25,15 @@ pub fn process(manager: &mut Manager, command: Command, val: Option<String>) -> 
         Command::GotoTag if val.is_none() => false,
         Command::GotoTag if !is_num(&val) => false,
         Command::GotoTag => {
-            let zero = manager.tag_index(manager.focused_tag(0).unwrap_or_default());
-            let one = manager
-                .tag_index(manager.focused_tag(1).unwrap_or_default())
-                .unwrap_or_default();
-            let tag_value = to_num(&val);
-            let tag = match (zero, tag_value) {
-                (Some(x), y) if x + 1 == y => one + 1,
-                (_, _) => tag_value,
+            let current_tag = manager.tag_index(manager.focused_tag(0).unwrap_or("".to_string()));
+            let previous_tag = manager.tag_index(manager.focused_tag(1).unwrap_or("".to_string()));
+            let input_tag = to_num(&val);
+
+            let destination_tag = match (current_tag, previous_tag, input_tag) {
+                (Some(x), Some(z), y) if x + 1 == y => z + 1, // if current tag is the same as the destination tag, go to the previous tag instead
+                (_, _, _) => input_tag,                       // go to the input tag tag
             };
-            goto_tag_handler::process(manager, tag)
+            goto_tag_handler::process(manager, destination_tag)
         }
 
         Command::FocusNextTag => {
@@ -455,4 +423,131 @@ fn to_num(val: &Option<String>) -> usize {
     val.as_ref()
         .and_then(|num| num.parse::<usize>().ok())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn go_to_tag_should_return_false_if_no_screen_is_created() {
+        let mut manager = Manager::default();
+        // no screen creation here
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("6".to_string())),
+            false
+        );
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("2".to_string())),
+            false
+        );
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("15".to_string())),
+            false
+        );
+    }
+
+    #[test]
+    fn go_to_tag_should_create_at_least_one_tag_per_screen_no_more() {
+        let mut manager = Manager::default();
+        screen_create_handler::process(&mut manager, Screen::default());
+        screen_create_handler::process(&mut manager, Screen::default());
+        // no tag creation here but one tag per screen is created
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("2".to_string())
+        ));
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("1".to_string())
+        ));
+        // we only have one tag per screen created automatically
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("3".to_string())),
+            false
+        );
+    }
+
+    #[test]
+    fn go_to_tag_should_return_false_on_invalid_input() {
+        let mut manager = Manager::default();
+        screen_create_handler::process(&mut manager, Screen::default());
+        manager.tags = vec![
+            TagModel::new("A15"),
+            TagModel::new("B24"),
+            TagModel::new("C"),
+            TagModel::new("6D4"),
+            TagModel::new("E39"),
+            TagModel::new("F67"),
+        ];
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("abc".to_string())),
+            false
+        );
+        assert_eq!(
+            process(&mut manager, Command::GotoTag, Some("ab45c".to_string())),
+            false
+        );
+        assert_eq!(process(&mut manager, Command::GotoTag, None), false);
+    }
+
+    #[test]
+    fn go_to_tag_should_go_to_tag_and_set_history() {
+        let mut manager = Manager::default();
+        manager.tags = vec![
+            TagModel::new("A15"),
+            TagModel::new("B24"),
+            TagModel::new("C"),
+            TagModel::new("6D4"),
+            TagModel::new("E39"),
+            TagModel::new("F67"),
+        ];
+        screen_create_handler::process(&mut manager, Screen::default());
+        screen_create_handler::process(&mut manager, Screen::default());
+
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("6".to_string())
+        ));
+        let current_tag = manager.tag_index(manager.focused_tag(0).unwrap_or("".to_string()));
+        assert_eq!(current_tag, Some(5));
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("2".to_string())
+        ));
+        let current_tag = manager.tag_index(manager.focused_tag(0).unwrap_or("".to_string()));
+        assert_eq!(current_tag, Some(1));
+
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("3".to_string())
+        ));
+        let current_tag = manager.tag_index(manager.focused_tag(0).unwrap_or("".to_string()));
+        assert_eq!(current_tag, Some(2));
+
+        assert!(process(
+            &mut manager,
+            Command::GotoTag,
+            Some("4".to_string())
+        ));
+        let current_tag = manager.tag_index(manager.focused_tag(0).unwrap_or("".to_string()));
+        assert_eq!(current_tag, Some(3));
+        assert_eq!(
+            manager.tag_index(manager.focused_tag(1).unwrap_or("".to_string())),
+            Some(2)
+        );
+        assert_eq!(
+            manager.tag_index(manager.focused_tag(2).unwrap_or("".to_string())),
+            Some(1)
+        );
+        assert_eq!(
+            manager.tag_index(manager.focused_tag(3).unwrap_or("".to_string())),
+            Some(5)
+        );
+    }
 }

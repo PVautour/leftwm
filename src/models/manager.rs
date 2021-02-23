@@ -55,8 +55,8 @@ impl Manager {
         Some(&mut self.workspaces[index])
     }
 
-    /// Return the currently focused tag.
-    /// Offset is used to reach farther down the history.
+    /// Return the currently focused tag if the offset is 0.
+    /// Offset is used to reach further down the history.
     pub fn focused_tag(&self, offset: usize) -> Option<String> {
         self.focused_tag_history.get(offset).map(|t| t.to_string())
     }
